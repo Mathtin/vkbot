@@ -12,11 +12,12 @@ def MathtinID(): return 24799071
 def PlaguedoID(): return 185952294
 def url(): return "https://api.vk.com/method/"
 
-log_level = 0
+def void_func(args):
+    return 0
 
 class vkbot(object):
-    def __init__(self, reactions, bot_name, token, sudoers_id, vk_group_id = 101594097, shout_to = None):
-        if shout_to : shout_to("Creating bot " + bot_name)
+    def __init__(self, reactions, bot_name, token, sudoers_id, vk_group_id = 101594097, shout_to = void_func):
+        shout_to("Creating bot " + bot_name)
         self.__reactions = reactions
         self.__name = bot_name
         self.__smtoken = token
