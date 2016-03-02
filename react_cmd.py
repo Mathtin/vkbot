@@ -43,7 +43,7 @@ class react_cmd(engine.reaction):
         #WEATHER
         if command[0] == "#!weather":
             if command_len == 1:
-                action_struct["message"] = currentWeather("Moscow")
+                msg_struct["message"] = currentWeather("Moscow")
             else:
                 msg_struct["message"] = currentWeather(command[1])
         #AHTUNG

@@ -10,7 +10,7 @@ class react_ask(engine.reaction):
     def __init__(self, allowed_users):
         engine.reaction.__init__(self, allowed_users)
         
-    def key(self): return 'ask'
+    def get_key(self): return 'ask'
     
     def rule(self, sender, update):
         if update['type'] != 4 or update['flags']['out']:

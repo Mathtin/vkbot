@@ -30,7 +30,6 @@ class vkbot(object):
             'server': "",
             'ts': 0
         }
-        self.active = True
         #Debug print function (usually print)
         self.__shout = shout_to
         #Debug amount of info (lower level - less info)
@@ -56,9 +55,10 @@ class vkbot(object):
         return False
     
     #Define amount of debug info and change print function
-    def subscribe(self, log_level, callback = None):
-        if callback : self.__shout = callback
-        if self.__shout: self.__log_level = log_level
+    def subscribe(self, log_level = None, callback = None):
+        if callback: self.__shout = callback
+        if log_level: self.__hidden_level = log_level
+        if self.__shout: self.__log_level = self.__hidden_level
         
     #Server Connection
     def startLongPollServer(self):
@@ -70,6 +70,7 @@ class vkbot(object):
         paramsonsend = urlencode(onsend)
         if self.__shout: self.__shout("Connecting to Longpoll server...")
         f = urlopen(url() + method % paramsonsend)
+        self.active = True
         answer = f.read().decode("utf-8")
         longpoll_info = json.loads(answer)
         #Updating long poll server info
@@ -95,11 +96,15 @@ class vkbot(object):
         answer = f.read().decode("utf-8")
         if self.__log_level >= 3:
             self.__shout("LongPollConnect: " + answer)
-        if not(is_json(answer)): raise ConnectionResetError('VK Long Poll server dropped')
+        if not(is_json(answer)): 
+            self.active = False
+            raise ConnectionResetError('VK Long Poll server dropped')
         dec = json.loads(answer)
         if "failed" in dec:
             if dec["failed"] == 1: self.__longpoll['ts'] = dec["ts"]
-            else: raise ConnectionResetError('VK Long Poll server dropped')
+            else:
+                self.active = False
+                raise ConnectionResetError('VK Long Poll server dropped')
         return answer
 
     #Message Manipulation
