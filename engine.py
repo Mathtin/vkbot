@@ -160,7 +160,7 @@ class vkbot(object):
             'access_token': self.__smtoken
         }
         if update['chat_id'] != update['user_id']:
-            msg_struct['chat_id'] = update['chatID'] - 2000000000
+            msg_struct['chat_id'] = update['chat_id'] - 2000000000
         else:
             msg_struct['user_id'] = update['user_id']
         

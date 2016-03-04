@@ -37,8 +37,11 @@ class react_cmd(engine.reaction):
         command_len=len(command)
         if sender.get_log_level()  >= 2:
             for i in range(command_len):
-                if command[i] == "": del command[i]
-                sender.get_shouter()("Arg[" + str(i) + "]=\"" + command[i] + "\"")
+                if command[i] == "": 
+                    del command[i]
+                    i -= 1
+                    command_len -= 1
+                else: sender.get_shouter()("Arg[" + str(i) + "]=\"" + command[i] + "\"")
         #Commands with arguments
         #WEATHER
         if command[0] == "#!weather":
@@ -93,8 +96,6 @@ class react_cmd(engine.reaction):
             else:
                 msg_struct["message"] = "Too much statements"
         #Commands with no arguments
-        elif command_len > 1:
-            msg_struct["message"] = "No arguments expected"
         elif command[0] =="#!getanswer":
             msg_struct["message"] = "Na tebe answer D:<"
         elif command[0] == "#!killyourself":
