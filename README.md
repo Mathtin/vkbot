@@ -45,13 +45,14 @@ reaction = [
     ...
 ]
 ...
-root_list = [ 24799071, 18595229 ]
+root_list = [ 24799071, 185952294 ]
 ...
 Shrek = VKBot(reactions, "Shrek", smtoken, root_list, shout_to = print)
 ```
 
 ##Shout to
-Debug print function (usually print). You can increase amount of debug data: `Shrek.subscribe(log_level = 1)`  
+Debug print function (usually print).  
+You can increase amount of debug data: `Shrek.subscribe(log_level = 1)`  
 Also change print function: `Shrek.subscribe(shout_to = donkey)`  
 All in all: `Shrek.subscribe(1, donkey)`
     
@@ -63,7 +64,7 @@ action = Shrek.getAction(update)
 if str(action) == "message":
     if update['user_id'] == 24799071: 
         action.msg_struct["message"] +="\nYour pleasure, greatest King Daniil IV"
-    elif update['user_id'] == 18595229: 
+    elif update['user_id'] == 185952294: 
         action.msg_struct["message"] += "\nTea is ready, Senpai"
 ...
 ```
