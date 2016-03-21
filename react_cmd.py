@@ -19,7 +19,8 @@ class react_cmd(engine.reaction):
         return False
 
     def pars_func(self, sender, update):
-        msg_struct = sender.createMsgStruct(update)
+        sendMsg = engine.SendMessage(sender, update)
+        msg_struct = sendMsg.msg_struct
         msg = update['message']
         userID = update['user_id']
         chatID = update['chat_id']
@@ -120,7 +121,7 @@ Basic:\n\
 #!rand A B - generate random integer between A and B (A<=B)\n\
 Useful:\n\
 #!weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
-#!kuantan - recieve IP-adress of kuantan\n"
+#!kuantan - recieve IP-adress of kuantan"
         elif command[0] == "#!song":
             if sender.is_root(userID):
                 msg_struct["message"] = "Послушай это:"
@@ -133,7 +134,7 @@ Useful:\n\
                 msg_struct["attachment"] = attachment
         else:
             msg_struct["message"] = "No such command"
-        return msg_struct
+        return sendMsg
 
 #OpenWeatherMap API
 def currentWeather(city="Moscow"):

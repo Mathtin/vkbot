@@ -12,11 +12,8 @@ def MathtinID(): return 24799071
 def PlaguedoID(): return 185952294
 def url(): return "https://api.vk.com/method/"
 
-def void_func(args):
-    return 0
-
-class vkbot(object):
-    def __init__(self, reactions, bot_name, token, sudoers_id, vk_group_id = 101594097, shout_to = void_func):
+class VKBot:
+    def __init__(self, reactions, bot_name, token, sudoers_id, vk_group_id = 101594097, shout_to = lambda *args: None):
         shout_to("Creating bot " + bot_name)
         self.__reactions = reactions
         self.__name = bot_name
@@ -49,10 +46,7 @@ class vkbot(object):
         return self.__shout
         
     def is_root(self, id):
-        for i in range(0, len(self.__root_list)):
-            if self.__root_list[i] == id:
-                return True
-        return False
+        return id in self.__root_list
     
     #Define amount of debug info and change print function
     def subscribe(self, log_level = None, callback = None):
@@ -114,18 +108,18 @@ class vkbot(object):
         self.__longpoll['ts'] = decoded_string["ts"]
         parsed_updates = []
         #Creating list of updates
-        for i in range(len(decoded_string["updates"])):
-            flags = vkbot.manageFlags(decoded_string["updates"][i][2])
+        for update_raw in decoded_string["updates"]:
+            flags = VKBot.manageFlags(update_raw[2])
             parsed_updates.append({ 
-                'type': decoded_string["updates"][i][0],    #type of update
-                'raw': decoded_string["updates"][i],        #raw data
-                'flags': flags                              #data flags
+                'type': update_raw[0],    #type of update
+                'raw': update_raw,        #raw data
+                'flags': flags            #data flags
             })
             if parsed_updates[-1]['type']==4:
-                parsed_updates[-1]['message'] = decoded_string["updates"][i][6]
-                chatID = decoded_string["updates"][i][3]
+                parsed_updates[-1]['message'] = update_raw[6]
+                chatID = update_raw[3]
                 userID = chatID
-                if chatID >= 2000000000: userID = int(decoded_string["updates"][i][7]["from"])
+                if chatID >= 2000000000: userID = int(update_raw[7]["from"])
                 parsed_updates[-1]['chat_id'] = chatID
                 parsed_updates[-1]['user_id'] = userID
                 if not(flags["out"]) and self.__log_level >= 2:
@@ -134,7 +128,7 @@ class vkbot(object):
                     self.__shout("Message sent")
         return parsed_updates
 
-    def getActionStruct(self, update):
+    def getAction(self, update):
         for reaction in self.__reactions:
             satisfies = reaction.rule(self, update)
             allowed_users = reaction.get_allowed_users()
@@ -142,29 +136,11 @@ class vkbot(object):
             allowed = allowed or (allowed_users == "friends" and update['user_id']['flags']['frnd'])
             allowed = allowed or (allowed_users == "root" and self.is_root(update['user_id']))
             if satisfies and allowed:
-                answer = reaction.pars_func(self, update)
+                action = reaction.pars_func(self, update)
                 if self.__log_level >= 2:
-                    self.__shout("getMsgStruct:\n" + str(answer))
-                return answer
-        return None
-    
-    def applyAction(self, action_struct):
-        if action_struct['type'] == "message":
-            del action_struct['type']
-            self.sendMsgStruct(action_struct)
-    
-    def createMsgStruct(self, update):
-        msg_struct = {
-            'type': "message",
-            'message': "",
-            'access_token': self.__smtoken
-        }
-        if update['chat_id'] != update['user_id']:
-            msg_struct['chat_id'] = update['chat_id'] - 2000000000
-        else:
-            msg_struct['user_id'] = update['user_id']
-        
-        return msg_struct
+                    self.__shout("Action type:\n" + str(answer))
+                return action
+        return BotAction()
         
     @staticmethod
     def manageFlags(n):
@@ -288,7 +264,7 @@ class vkbot(object):
         else:
             return decoded_string["response"]["text"]
         
-class reaction(object):
+class reaction:
     def __getitem__(self, index):
         return getattr(self, index)
     def __init__(self, allowed_users):
@@ -297,13 +273,39 @@ class reaction(object):
         return "none"
     def get_allowed_users(self):
         return self.__users
-    def is_extension(self):
-        return False
     def rule(self, sender, update):
         return False
     def pars_func(self, sender, update):
-        msg_struct["message"] = ""
-        return msg_struct
+        return None
+
+class BotAction:
+    def __init__(self, callback = lambda *args: None, type_ = "none"):
+        self.callback = callback
+        self.type = type_
+    def __str__(self):
+        return self.type
+    def __call__(self):
+        return self.callback()
+
+class BotActionWrap:
+    def __init__(self, type_ = "none"):
+        self.type = type_
+    def __call__(self, action):
+        return BotAction(action, self.type)
+
+class SendMessage(BotAction):
+    def __init__(self, sender, update):
+        self.msg_struct = {
+            'message': "",
+            'access_token': sender.get_smtoken()
+        }
+        if update['chat_id'] != update['user_id']:
+            self.msg_struct['chat_id'] = update['chat_id'] - 2000000000
+        else:
+            self.msg_struct['user_id'] = update['user_id']
+        def callback():
+            sender.sendMsgStruct(self.msg_struct)
+        BotAction.__init__(self, callback, "message")
 
 #Basic
 def is_json(myjson):

@@ -1,10 +1,10 @@
-# vkbot
+# VKBot
 Modular VK Bot, wich works on "reactions"
 
 ##Basic usage example
 import every thing you downloaded
 ```
-from engine import vkbot
+from engine import VKBot
 import react_cmd, react_ask
 ```
 Add access token and create sequential list of reaction modules
@@ -17,15 +17,14 @@ reactions = [
 ```
 Finally initialise bot and start listen for updates
 ```
-Shrek = vkbot(reactions, "Shrek", smtoken, shout_to = print)
+Shrek = VKBot(reactions, "Shrek", smtoken, shout_to = print)
 Shrek.startLongPollServer()
 while Shrek.active:
     try:
         server_answer = Shrek.LongPollListen()
         update_list = Shrek.parsAnswer(server_answer)
         for update in update_list:
-            action_struct = Shrek.getActionStruct(update)
-            if action_struct: Shrek.applyAction(action_struct)
+            Shrek.getAction(update)()
     except KeyboardInterrupt:
             Shrek.active = False
     except Exeption:
@@ -52,18 +51,20 @@ Shrek = vkbot(reactions, "Shrek", smtoken, root_list, shout_to = print)
 ```
 
 ##Shout to
-Debug print function (usually print). You can increase amount of debug data `Shrek.subscribe(log_level = 1)`
-Also change print function `Shrek.subscribe(shout_to = donkey)`
+Debug print function (usually print). You can increase amount of debug data: `Shrek.subscribe(log_level = 1)`  
+Also change print function: `Shrek.subscribe(shout_to = donkey)`  
+All in all: `Shrek.subscribe(1, donkey)`
     
 ##We can correct surface actions before applying
+When we recieve action, we can change some entries of actions
 ```
 ...
-            if action_struct:
-                if action_struct['type'] == "message":
-                    if update['user_id'] == 24799071: 
-                        action_struct["message"] = action_struct["message"] + "\nYour pleasure, greatest King Daniil IV"
-                    elif update['user_id'] == 18595229: 
-                        action_struct["message"] = action_struct["message"] + "\nTea is ready, Senpai"
+action = Shrek.getAction(update)
+if str(action) == "message":
+    if update['user_id'] == 24799071: 
+        action.msg_struct["message"] +="\nYour pleasure, greatest King Daniil IV"
+    elif update['user_id'] == 18595229: 
+        action.msg_struct["message"] += "\nTea is ready, Senpai"
 ...
 ```
 

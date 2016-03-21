@@ -24,7 +24,7 @@ class react_ask(engine.reaction):
             return False
 
     def pars_func(self, sender, update):
-        msg_struct = sender.createMsgStruct(update)
+        sendMsg = engine.SendMessage(sender, update)
         msg = update['message']
         random.seed(msg)
         if (u'Почему' in msg) or (u'почему' in msg) or (u'Why' in msg) or (u'why' in msg):
@@ -34,5 +34,5 @@ class react_ask(engine.reaction):
         else:
             msg = ["Безусловно это правда", "Такого не может быть", "Да", "Нет", "Может быть", "Не уверена", "Соглашусь с тобой", "Не могу с тобой согласиться", "Возможно", "Вряд ли", "Я промолчу"]
         g = random.randint(0, len(msg) - 1)
-        msg_struct["message"] = msg[g]
-        return msg_struct
+        sendMsg.msg_struct["message"] = msg[g]
+        return sendMsg
