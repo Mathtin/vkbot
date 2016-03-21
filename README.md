@@ -47,7 +47,7 @@ reaction = [
 ...
 root_list = [ 24799071, 18595229 ]
 ...
-Shrek = vkbot(reactions, "Shrek", smtoken, root_list, shout_to = print)
+Shrek = VKBot(reactions, "Shrek", smtoken, root_list, shout_to = print)
 ```
 
 ##Shout to
