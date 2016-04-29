@@ -10,6 +10,21 @@ from urllib.parse import urlencode
 class react_cmd(engine.reaction):
     def __init__(self, allowed_users):
         engine.reaction.__init__(self, allowed_users)
+        self.help = {}
+        self.__help = "Command format: #!command [args]\n\
+Example: #!help\n\
+Choose section\n\
+Example: #!help basic\n\
+Available sections: all"
+        self.help["basic"] = "Basic:\n\
+#!help [section] - about [section]\n\
+#!version - show version\n\
+#!getanswer - test command\n\
+#!rand A - generate random integer modulo A\n\
+#!rand A B - generate random integer between A and B (A<=B)"
+        self.help["useful"] = "Useful:\n\
+#!weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
+#!kuantan - recieve IP-adress of kuantan\n"
         
     def get_key(self): return 'cmd'
     
@@ -111,17 +126,20 @@ Bot Name " + sender.get_name() + "\n\
 Coded for Python 3.4.3\n\
 Special thanks to Alexey Kuhtin"
         elif command[0] == "#!help":
-            msg_struct["message"] =  "Command format: #!command [args]\n\
-Example: #!help\n\
-Basic:\n\
-#!help - show this message\n\
-#!version - show version\n\
-#!getanswer - test command\n\
-#!rand A - generate random integer modulo A\n\
-#!rand A B - generate random integer between A and B (A<=B)\n\
-Useful:\n\
-#!weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
-#!kuantan - recieve IP-adress of kuantan"
+            help = sender.get_descriptions()
+            if len(command) == 1:
+                msg_struct["message"] = self.__help
+                for s in help:
+                    if s != "none":
+                        msg_struct["message"] += ", " + s 
+            else:
+                if command[1] == "all":
+                    for s in help:
+                        if help[s][-1] != "\n": help[s] += "\n"
+                        msg_struct["message"] = msg_struct["message"] + help[s]
+                elif command[1] in help:
+                        msg_struct["message"] = help[command[1]]
+                else: msg_struct["message"] = "No such section"
         elif command[0] == "#!song":
             if sender.is_root(userID):
                 msg_struct["message"] = "Послушай это:"

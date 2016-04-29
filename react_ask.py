@@ -9,6 +9,7 @@ import re
 class react_ask(engine.reaction):
     def __init__(self, allowed_users):
         engine.reaction.__init__(self, allowed_users)
+        self.help = { 'ask': 'Попробуй задать мне вопрос'}
         
     def get_key(self): return 'ask'
     

@@ -45,6 +45,14 @@ class VKBot:
     def get_shouter(self):
         return self.__shout
         
+    def get_descriptions(self):
+        desc = {}
+        for react in self.__reactions:
+            for section in react.help:
+                if section != "none":
+                    desc[section] = react.help[section]
+        return desc
+        
     def is_root(self, id):
         return id in self.__root_list
     
@@ -68,7 +76,7 @@ class VKBot:
         answer = f.read().decode("utf-8")
         longpoll_info = json.loads(answer)
         #Updating long poll server info
-        self.__longpoll['key']=longpoll_info["response"]["key"]
+        self.__longpoll['key'] = longpoll_info["response"]["key"]
         self.__longpoll['server'] = longpoll_info["response"]["server"]
         self.__longpoll['ts'] = longpoll_info["response"]["ts"]
         if self.__shout:
@@ -269,6 +277,7 @@ class reaction:
         return getattr(self, index)
     def __init__(self, allowed_users):
         self.__users = allowed_users
+        self.help = {'none': 'nothing'}
     def get_key(self):
         return "none"
     def get_allowed_users(self):
