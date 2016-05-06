@@ -2,157 +2,156 @@
 # -*- coding: utf-8 -*-
 # by Mathtin and Plaguedo
 
-import engine
+import engine as vk
 import random, json
 from urllib.request import urlopen
 from urllib.parse import urlencode
 
-class react_cmd(engine.reaction):
+PREFIX = '#!'
+
+class react_cmd(vk.reaction):
+
+    key = 'cmd'
+
     def __init__(self, allowed_users):
-        engine.reaction.__init__(self, allowed_users)
-        self.help = {}
-        self.__help = "Command format: #!command [args]\n\
+        vk.reaction.__init__(self, allowed_users)
+        self.description = {}
+        self.description["about_cmd"] = "Command format: #!command [args]\n\
 Example: #!help\n\
 Choose section\n\
 Example: #!help basic\n\
 Available sections: all"
-        self.help["basic"] = "Basic:\n\
+        self.description["basic"] = "Basic:\n\
 #!help [section] - about [section]\n\
 #!version - show version\n\
 #!getanswer - test command\n\
 #!rand A - generate random integer modulo A\n\
 #!rand A B - generate random integer between A and B (A<=B)"
-        self.help["useful"] = "Useful:\n\
+        self.description["useful"] = "Useful:\n\
 #!weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
 #!kuantan - recieve IP-adress of kuantan\n"
-        
-    def get_key(self): return 'cmd'
-    
-    def rule(self, sender, update):
-        if update['type'] == 4 and not(update['flags']['out']) and update['message'][:2] == '#!':
-            return True
-        return False
 
-    def pars_func(self, sender, update):
-        sendMsg = engine.SendMessage(sender, update)
-        msg_struct = sendMsg.msg_struct
-        msg = update['message']
+    def check_update(self, bot, update):
+        if not(self.is_allowed(bot,update)) or\
+            update['type'] != vk.NEWMESSAGE or\
+            bot.has_flag("OUTBOX", update) or\
+            update['message'][:2] != PREFIX:
+            return False
+        msg = update['message'][2:]
         userID = update['user_id']
         chatID = update['chat_id']
         #Parsing quots
-        temp=msg.split("&quot;")
-        command=[]
+        temp = msg.split("&quot;")
+        argv = []
         for i in range(len(temp)):
             if (i + 1) % 2 == 1:
                 array = temp[i].split(" ")
                 for arg in array:
-                    if arg != "":
-                        command.append(arg)
-            else:
-                command.append(temp[i])
-        command_len=len(command)
-        if sender.get_log_level()  >= 2:
-            for i in range(command_len):
-                if command[i] == "": 
-                    del command[i]
-                    i -= 1
-                    command_len -= 1
-                else: sender.get_shouter()("Arg[" + str(i) + "]=\"" + command[i] + "\"")
+                    if arg: argv.append(arg)
+            elif temp[i]: 
+                argv.append(temp[i])
+        argc = len(argv)
+        bot.log("cmd \"" + str(argv[0]) + "Args" + str(argv[1:]), 2)
+        args = (bot, argv, userID, chatID)
+        kwargs = {}
+        if self.call_ext( args, kwargs ): return True
         #Commands with arguments
         #WEATHER
-        if command[0] == "#!weather":
-            if command_len == 1:
-                msg_struct["message"] = currentWeather("Moscow")
+        #bot.send_message("", to = chatID)
+        if argv[0] == "weather":
+            if argc == 1:
+                bot.send_message(currentWeather("Moscow"), to = chatID)
             else:
-                msg_struct["message"] = currentWeather(command[1])
+                bot.send_message(currentWeather(argv[1]), to = chatID)
         #AHTUNG
-        elif command[0] == "#!ahtung" or command[0] == "#!aht":
-            if command_len < 3:
-                msg_struct["message"] = "Statement expected, usage: #!aht[ung] group message"
+        elif argv[0] == "ahtung" or argv[0] == "aht":
+            if argc < 3:
+                bot.send_message("Statement expected, usage: #!aht[ung] group \"message\"", to = chatID)
             else:
                 user_list = []
-                if command[1] == "corrupted":
-                    user_list = [ '24799071', '185952294' ]
-                elif command[1] == "stars":
-                    user_list = [ '24799071', '185952294' ]
-                elif command[1] == "root":
-                    user_list = [ '24799071', '185952294' ]
+                if argv[1] == "corrupted":
+                    user_list = vk.__team_ids__
+                elif argv[1] == "stars":
+                    user_list = vk.__team_ids__
+                elif argv[1] == "root":
+                    user_list = bot.get_root_list()
                 else:
-                    msg_struct["message"] = "Nothing matches to " + command[1]
-                    return msg_struct
-                sender.get_shouter()("To group: " + command[1] + '\n')
-                command = command[2:]
-                if 'user_id' in msg_struct: del msg_struct['user_id']
-                elif 'chat_id' in msg_struct: del msg_struct['chat_id']
-                msg = " ".join(command)
-                sender.get_shouter()("Important message: " + msg + '\n')
-                sender.get_shouter()("To users: " + ",".join(user_list) + '\n')
-                msg_struct['user_ids'] = ",".join(user_list)
-                msg_struct["message"] = u'[АХТУНГ]\n' + msg + u'\n[/АХТУНГ]'
+                    bot.send_message("Nothing matches to " + argv[1], to = chatID)
+                if not(userID in user_list):
+                    bot.send_message("You are not a member of " + argv[1], to = chatID)
+                    return True
+                bot.log("Important message: " + argv[2], 1)
+                bot.log("For users: " + ",".join(str(x) for x in user_list), 1)
+                bot.log("Group: " + argv[1], 1)
+                bot.send_message("<АХТУНГ, " + argv[1] + ">\n" + argv[2] + "\n</АХТУНГ>", to = user_list)
         #RANDOM
-        elif command[0] == "#!rand":
-            if command_len == 1:
-                msg_struct["message"] = "Statement expected"
-            elif command_len == 2:
-                if not(command[1].isdigit()):
-                    msg_struct["message"] = "Number expected"
+        elif argv[0] == "rand":
+            if argc == 1:
+                bot.send_message("Statement expected", to = chatID)
+            elif argc == 2:
+                if not(argv[1].isdigit()):
+                    bot.send_message("Number expected", to = chatID)
                 else:
-                    if sender.get_log_level() >= 1:
-                        sender.get_shouter()("request for RAND: \"" + msg + "\"")
-                    msg_struct["message"] = str(random.randint(0, int(command[1])))
-            elif command_len == 3:
-                if not(command[1].isdigit()) or not(command[2].isdigit()):
-                    msg_struct["message"] = "Numbers expected"
-                elif int(command[1]) > int(command[2]):
-                    msg_struct["message"] = "Wrong range"
-                else:
-                    if sender.get_log_level() >= 1:
-                        sender.get_shouter()("request for RAND: \"" + msg + "\"")
-                    msg_struct["message"] = random.randint(int(command[1]), int(command[2]))
+                    bot.log("request for RAND: \"" + msg + "\"", 1)
+                    bot.send_message( random.randint(0, int(argv[1])), to = chatID)
             else:
-                msg_struct["message"] = "Too much statements"
+                if not(argv[1].isdigit()) or not(argv[2].isdigit()):
+                    bot.send_message("Numbers expected", to = chatID)
+                elif int(argv[1]) > int(argv[2]):
+                    bot.send_message("Wrong range", to = chatID)
+                else:
+                    bot.log("request for RAND: \"" + msg + "\"", 1)
+                    bot.send_message( random.randint(int(argv[1]), int(argv[2])), to = chatID)
         #Commands with no arguments
-        elif command[0] =="#!getanswer":
-            msg_struct["message"] = "Na tebe answer D:<"
-        elif command[0] == "#!killyourself":
-            msg_struct["message"] = "Noooooooooo!!!"
-        elif command[0] == "#!lukeiamyourfather":
-            msg_struct["message"] = "I love you too, Daddy <3"
-        elif command[0] == "#!kuantan":
-            msg_struct["message"] = sender.getIP()
-        elif command[0] == "#!version":
-            msg_struct["message"] = "Best Chat Bot Ever by Plaguedo and Mathtin " + engine.ver() + "\n\
-Bot Name " + sender.get_name() + "\n\
+        elif argv[0] =="getanswer":
+            bot.send_message("Na tebe answer D:<", to = chatID)
+        elif argv[0] == "killyourself":
+            bot.send_message("Noooooooooo!!!", to = chatID)
+        elif argv[0] == "lukeiamyourfather":
+            bot.send_message("I love you too, Daddy <3", to = chatID)
+        elif argv[0] == "kuantan":
+            bot.send_message(bot.getIP(), to = chatID)
+        elif argv[0] == "version":
+            bot.send_message("Best Chat Bot Ever by Plaguedo and Mathtin " + vk.__version__ + "\n\
+Bot Name " + bot.get_name() + "\n\
 Coded for Python 3.4.3\n\
-Special thanks to Alexey Kuhtin"
-        elif command[0] == "#!help":
-            help = sender.get_descriptions()
-            if len(command) == 1:
-                msg_struct["message"] = self.__help
+Special thanks to Alexey Kuhtin", to = chatID)
+        elif argv[0] == "help":
+            help = bot.get_descriptions()
+            if argc == 1:
+                msg = self.description["about_cmd"]
                 for s in help:
-                    if s != "none":
-                        msg_struct["message"] += ", " + s 
+                    if s != "none" and s != "about_cmd":
+                        msg += ", " + s 
+                bot.send_message(msg, to = chatID)
             else:
-                if command[1] == "all":
+                if argv[1] == "all":
+                    desc = ""
                     for s in help:
+                        if s == "about_cmd": continue
                         if help[s][-1] != "\n": help[s] += "\n"
-                        msg_struct["message"] = msg_struct["message"] + help[s]
-                elif command[1] in help:
-                        msg_struct["message"] = help[command[1]]
-                else: msg_struct["message"] = "No such section"
-        elif command[0] == "#!song":
-            if sender.is_root(userID):
-                msg_struct["message"] = "Послушай это:"
+                        desc += help[s]
+                    bot.send_message(desc, to = chatID)
+                elif argv[1] in help:
+                        bot.send_message(help[argv[1]], to = chatID)
+                else: bot.send_message("No such section", to = chatID)
+        elif argv[0] == "song":
+            msg = ""
+            if bot.is_root(userID):
+                msg = "Послушай это:"
             else:
-                msg_struct["message"] = "Лови"
-            attachment = sender.attachRecommendedAudio(userID)
-            if not(attachment):
-                msg_struct["message"] = "Похоже ты скрыл от меня свои предпочтения"
-            else: 
-                msg_struct["attachment"] = attachment
+                msg = "Лови"
+            audio = bot.recommended_audio(userID)
+            if not(audio):
+                bot.send_message("Похоже ты скрыл от меня свои предпочтения", to = chatID)
+            else:
+                bot.send_message("Похоже ты скрыл от меня свои предпочтения",
+                    to = chatID,
+                    attachment = audio
+                )
         else:
-            msg_struct["message"] = "No such command"
-        return sendMsg
+            bot.send_message("No such command", to = chatID)
+        return True
 
 #OpenWeatherMap API
 def currentWeather(city="Moscow"):
