@@ -43,8 +43,8 @@ Shrek = VKBot(reactions, "Shrek", smtoken, root_list, log_to = print)
 
 ##Logging
 Debug print function (usually print).  
-You can increase amount of debug data: `Shrek.subscribe(log_level = 1)`  
-Also change print function: `Shrek.subscribe(set_logger = donkey)`  
+You can increase amount of debug data: `Shrek.set_logger(log_level = 1)`  
+Also change print function: `Shrek.set_logger(donkey)`  
 All in all: `Shrek.set_logger(donkey, 1)`
 
 ##Creating own reaction
