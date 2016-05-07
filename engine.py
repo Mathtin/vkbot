@@ -7,7 +7,7 @@ from urllib.request import urlopen
 from urllib.parse import urlencode
 import json, copy, time
 #ARBUZZZZ
-__version__     = "4.0.0b33"
+__version__     = "4.0.0b43"
 __author__      = "Corrupted Prj."
 __mathtin_id__  = 24799071
 __plaguedo_id__ = 185952294
@@ -359,7 +359,9 @@ class reaction:
                 res = True
         return res
         
-    def call_ext(self, args, kwargs):
+    def call_ext(*args, **kwargs):
+        self = args[0]
+        args = args[1:]
         res = False
         for ext in self.__ext:
             if ext(*args, **kwargs):

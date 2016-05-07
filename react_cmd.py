@@ -60,9 +60,8 @@ Available sections: all".format(prfx=PREFIX),
                 argv.append(temp[i])
         argc = len(argv)
         bot.log("cmd \"" + str(argv[0]) + "Args" + str(argv[1:]), 2)
-        args = (bot, argv, userID, chatID)
-        kwargs = {}
-        if self.call_ext( args, kwargs ): return True
+        if self.call_ext(bot, argv, userID, chatID):
+            return True
         if argv[0] in self.cmdlib:
             self.cmdlib[ argv[0] ](argc, argv, bot, userID, chatID, self)
         else:
