@@ -10,9 +10,7 @@ class react_ask(vk.reaction):
 
     key = 'ask'
     
-    def __init__(self, allowed_users):
-        vk.reaction.__init__(self, allowed_users)
-        self.description = { 'ask': 'Попробуй задать мне вопрос'}
+    description = { 'ask': 'Попробуй задать мне вопрос'}
 
     def check_update(self, bot, update):
         if update['type'] != vk.NEWMESSAGE:
@@ -21,7 +19,7 @@ class react_ask(vk.reaction):
         appeal = bot.get_name() in update['message']
         if  bot.has_flag("OUTBOX", update) or\
             not(question) or\
-            ( bot.has_flag("CONFERENSE", update) and not(appeal) ):
+            ( bot.has_flag("CONFERENCE", update) and not(appeal) ):
             return False
         msg = update['message']
         random.seed(msg)

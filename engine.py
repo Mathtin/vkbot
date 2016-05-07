@@ -5,7 +5,7 @@
 #import standart modules
 from urllib.request import urlopen
 from urllib.parse import urlencode
-import json, copy
+import json, copy, time
 #ARBUZZZZ
 __version__     = "4.0.0b33"
 __author__      = "Corrupted Prj."
@@ -201,6 +201,7 @@ class VKBot:
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
         self.log("Sending:" + answer, 2)
+        time.sleep(0.334)
         if is_json(answer) and "error" in answer:
             decoded_string = json.loads(answer)
             self.log("Server: " + decoded_string["error"]["error_msg"], 1)
@@ -219,17 +220,48 @@ class VKBot:
             msg_struct["attachment"] = attachment
         if not( isinstance(to, str) or isinstance(to, int) or isinstance(to, list) ):
             raise TypeError("WRONG TYPE OF ARGUMENT 'to'")
+        if isinstance(to, str) and to.isdigit():
+            to = int(to)
         if isinstance(to, list):
             for id in to:
                 if not( isinstance(id, str) or isinstance(id, int) ):
                     raise TypeError("WRONG TYPE(S) OF ID(S) IN 'to'")
             msg_struct['user_ids'] = ",".join(str(x) for x in to)
+        elif isinstance(to, str):
+            user_info = self.get_user_info(to)
+            if "error" in user_info:
+                raise Exception(user_info["error"]["error_msg"])
+            to = user_info["uid"]
         elif to > 2000000000:
             msg_struct['chat_id'] = to - 2000000000
         else:
             msg_struct['user_id'] = to
         return self.send_msg_struct(msg_struct)
-
+        
+    @staticmethod
+    def get_user_info(id_from):
+        method = "users.get?%s"
+        paramsonsend = urlencode({ 'user_ids': id_from, 'fields': "domain" })
+        #self.log("Getting user info...", 2)
+        f = urlopen(__vkapi__ + method % paramsonsend)
+        answer = f.read().decode("utf-8")
+        decoded_string = json.loads(answer)
+        if "error" in decoded_string:
+            return decoded_string
+        return decoded_string["response"][0]
+        
+    @staticmethod
+    def get_group_info(id_from):
+        method = "groups.getById?%s"
+        paramsonsend = urlencode({ 'group_ids': id_from })
+        #self.log("Getting user info...", 2)
+        f = urlopen(__vkapi__ + method % paramsonsend)
+        answer = f.read().decode("utf-8")
+        decoded_string = json.loads(answer)
+        if "error" in decoded_string:
+            return decoded_string
+        return decoded_string["response"][0]
+        
     #Extensions
     #Get Attachments
     def recommended_audio(self, id_from):
@@ -278,12 +310,14 @@ class VKBot:
             return decoded_string["response"]["text"]
         
 class reaction:
+    
+    description = {'none': 'nothing'}
+    
     def __getitem__(self, index):
         return getattr(self, index)
         
     def __init__(self, allowed_users):
         self.__users = allowed_users
-        self.description = {'none': 'nothing'}
         self.__ext = []
         
     def is_allowed(self, bot, update):
@@ -297,6 +331,10 @@ class reaction:
         elif ext.ext_for != self.get_key():
             raise Exception("UNFIMILIAR EXTENSION")
         self.__ext.append(ext)
+        ext.connect(self)
+        for section in ext.description:
+            if section != 'none':
+                self.description[section] = ext.description[section]
         
     @classmethod
     def get_key(cls): return cls.key
@@ -331,6 +369,9 @@ class reaction:
 class react_ext(reaction):
     def __init__(self, allowed_users):
         engine.reaction.__init__(self, allowed_users)
+    
+    def connect(self, r_inst):
+        self.r_inst = r_inst
     
     @classmethod
     def ext_for(cls): return cls.ext_for

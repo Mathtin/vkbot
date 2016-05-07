@@ -23,11 +23,13 @@ class react_sign(vk.reaction):
                 return True
         return False
 
-    def check_update(self, bot, update):
-        if update['type'] != vk.NEWMESSAGE or\
-            not(bot.has_flag("OUTBOX", update)) or\
-            not update['user_id'] in self.signatures or\
-            self.signature_in(update['message']):
-            return False
-        bot.send_message(self.signatures[update['user_id']], to = update['chat_id'])
-        return True
+    def __call__(self, bot, updates):
+        for update in updates:
+            if update['type'] != vk.NEWMESSAGE or\
+                not(bot.has_flag("OUTBOX", update)) or\
+                not update['user_id'] in self.signatures or\
+                self.signature_in(update['message']):
+                continue
+            bot.send_message(self.signatures[update['user_id']], to = update['chat_id'])
+            return True
+        return False
