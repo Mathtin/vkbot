@@ -6,14 +6,26 @@ import engine as vk
 import random, json
 from urllib.request import urlopen
 from urllib.parse import urlencode
+from types import MethodType
 
 PREFIX = '#!'
+
+def command(cls, cmd_name, root = False):
+    def cmd_wrapper(func):
+        if root: lib = cls.rcmdlib
+        else:    lib = cls.cmdlib
+        lib[cmd_name] = func
+        if isinstance(cls, react_cmd):
+            cls.localwrap(lib, cmd_name)
+        return func
+    return cmd_wrapper
 
 class react_cmd(vk.reaction):
 
     key = 'cmd'
     
     cmdlib = {}
+    rcmdlib = {}
 
     description = {
         "about_cmd": "Command format: {prfx}command [args]\n\
@@ -32,12 +44,23 @@ Available sections: all".format(prfx=PREFIX),
 {prfx}kuantan - recieve IP-adress of kuantan\n".format(prfx=PREFIX)
     }
     
-    @classmethod
-    def command(cls, cmd_name):
-        def cmd_wrapper(func):
-            cls.cmdlib[cmd_name] = func
-            return func
-        return cmd_wrapper
+    command = classmethod(command)
+        
+    def localwrap(self, lib, key):
+        func = lib[key]
+        def cmd_func(*args, **kwargs):
+            args = (self,) + args
+            return func(*args, **kwargs)
+        lib[key] = cmd_func
+        return func
+        
+    def __init__(self, allowed_users):
+        vk.reaction.__init__(self, allowed_users)
+        self.command = command.__get__(self)
+        for cmd in self.cmdlib:
+            self.localwrap(self.cmdlib, cmd)
+        for cmd in self.rcmdlib:
+            self.localwrap(self.rcmdlib, cmd)
 
     def check_update(self, bot, update):
         if not(self.is_allowed(bot,update)) or\
@@ -63,7 +86,12 @@ Available sections: all".format(prfx=PREFIX),
         if self.call_ext(bot, argv, userID, chatID):
             return True
         if argv[0] in self.cmdlib:
-            self.cmdlib[ argv[0] ](argc, argv, bot, userID, chatID, self)
+            self.cmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
+        elif argv[0] in self.rcmdlib:
+            if bot.is_root(userID):
+                self.rcmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
+            else:
+                bot.send_message("Insufficient permissions", to = chatID)
         else:
             bot.send_message("No such command", to = chatID)
         return True
@@ -71,7 +99,7 @@ Available sections: all".format(prfx=PREFIX),
         
 @react_cmd.command("ahtung")
 @react_cmd.command("aht")
-def ahtung_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def ahtung_cmd(cmd_handlerler, argc, argv, bot, userID, chatID):
     if argc < 3:
         bot.send_message("Statement expected, usage: {prfx}aht[ung] group \"message\"".format(prfx=PREFIX), to = chatID)
     else:
@@ -95,16 +123,16 @@ def ahtung_cmd(argc, argv, bot, userID, chatID, cmd_hand):
     
     
 @react_cmd.command("drop")
-def drop_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def drop_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     if bot.is_root(userID):
         bot.send_message("Throwing exception", to = chatID)
-        raise Exception("Manual drop")
+        raise vk.ManualDrop()
     bot.send_message("Insufficient permissions", to = chatID)
     return True
     
     
 @react_cmd.command("help")
-def help_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def help_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     help = bot.get_descriptions()
     if argc == 1:
         msg = react_cmd.description["about_cmd"]
@@ -127,31 +155,31 @@ def help_cmd(argc, argv, bot, userID, chatID, cmd_hand):
     
     
 @react_cmd.command("killyourself")
-def killyourself_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def killyourself_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     bot.send_message(bot.getIP(), to = chatID)
     return True
     
     
 @react_cmd.command("kuantan")
-def kuantan_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def kuantan_cmd(cmd_handler, argc, argv, bot, userID, chatID, ):
     bot.send_message("Na tebe answer D:<", to = chatID)
     return True
  
  
 @react_cmd.command("getanswer")
-def getanswer_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def getanswer_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     bot.send_message("Na tebe answer D:<", to = chatID)
     return True
     
     
 @react_cmd.command("lukeiamyourfather")
-def lukeiamyourfather_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def lukeiamyourfather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     bot.send_message("I love you too, Daddy <3", to = chatID)
     return True
     
     
 @react_cmd.command("rand")
-def rand_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def rand_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     if argc == 1:
         bot.send_message("Statement expected", to = chatID)
     elif argc == 2:
@@ -172,7 +200,7 @@ def rand_cmd(argc, argv, bot, userID, chatID, cmd_hand):
     
     
 @react_cmd.command("song")
-def song_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def song_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     msg = ""
     if bot.is_root(userID):
         msg = "Послушай это:"
@@ -187,7 +215,7 @@ def song_cmd(argc, argv, bot, userID, chatID, cmd_hand):
     
     
 @react_cmd.command("version")
-def version_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def version_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     bot.send_message("Best Chat Bot Ever by Plaguedo and Mathtin " + vk.__version__ + "\n\
 Bot Name " + bot.get_name() + "\n\
 Coded for Python 3.4.3\n\
@@ -196,7 +224,7 @@ Special thanks to Alexey Kuhtin", to = chatID)
 
     
 @react_cmd.command("weather")
-def weather_cmd(argc, argv, bot, userID, chatID, cmd_hand):
+def weather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     if argc == 1:
         bot.send_message(currentWeather("Moscow"), to = chatID)
     else:

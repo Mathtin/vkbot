@@ -5,9 +5,10 @@
 #import standart modules
 from urllib.request import urlopen
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 import json, copy, time
 #ARBUZZZZ
-__version__     = "4.0.0b43"
+__version__     = "4.1.0c"
 __author__      = "Corrupted Prj."
 __mathtin_id__  = 24799071
 __plaguedo_id__ = 185952294
@@ -111,7 +112,12 @@ class VKBot:
             raise Exception("NO CONNECTION")
         paramsonsend = urlencode(self.__lp_request)
         server = "https://" + self.__longpoll['server'] + "?%s"
-        f = urlopen(server % paramsonsend)
+        f = None
+        try: 
+            f = urlopen(server % paramsonsend)
+        except HTTPError:
+            self.connect( reconnect = True )
+            return self.a_check()
         answer = f.read().decode("utf-8")
         self.log("LongPoll: " + answer, 3)
         if not( is_json(answer) ): 
@@ -135,10 +141,14 @@ class VKBot:
         if not( self.__connected ):
             raise Exception("NO CONNECTION")
         self.__active = True
-        while True:
+        while self.__active:
             answer = self.a_check()
             self.parse_answer(answer)
-            self.send_last_updates()
+            try:
+                self.send_last_updates()
+            except ManualDrop:
+                self.__active = False
+                self.log("Manual Drop")
             
 
     #Message Manipulation
@@ -209,7 +219,7 @@ class VKBot:
                 self.log("Editing message...", 1)
                 msg_struct["message"] = "Oх...\n" + msg_struct["message"]
                 self.send_msg_struct(msg_struct)
-        return answer
+        return json.loads(answer)
         
     def send_message(self, msg, to, attachment = None):
         msg_struct = {
@@ -231,7 +241,7 @@ class VKBot:
             user_info = self.get_user_info(to)
             if "error" in user_info:
                 raise Exception(user_info["error"]["error_msg"])
-            to = user_info["uid"]
+            msg_struct['user_id'] = user_info["uid"]
         elif to > 2000000000:
             msg_struct['chat_id'] = to - 2000000000
         else:
@@ -309,6 +319,7 @@ class VKBot:
         else:
             return decoded_string["response"]["text"]
         
+        
 class reaction:
     
     description = {'none': 'nothing'}
@@ -370,7 +381,7 @@ class reaction:
         
 class react_ext(reaction):
     def __init__(self, allowed_users):
-        engine.reaction.__init__(self, allowed_users)
+        reaction.__init__(self, allowed_users)
     
     def connect(self, r_inst):
         self.r_inst = r_inst
@@ -378,6 +389,10 @@ class react_ext(reaction):
     @classmethod
     def ext_for(cls): return cls.ext_for
 
+class ManualDrop(Exception):
+    def __init__(self):
+        Exception.__init__(self, "Manual Drop")
+    
 #Basic
 def is_json(myjson):
     try:
