@@ -1,141 +1,250 @@
-#Command
+# Command Reaction
 # -*- coding: utf-8 -*-
-# by Mathtin and Plaguedo
+###################################################
+#........../\./\...___......|\.|..../...\.........#
+#........./..|..\/\.|.|_|._.|.\|....|.c.|.........#
+#......../....../--\|.|.|.|i|..|....\.../.........#
+#        Mathtin (c)                              #
+###################################################
+#	Author: Daniil [Mathtin] Shigapov             #
+#	Contributors: Plaguedo                        #
+#   Copyright (c) 2017 <wdaniil@mail.ru>          #
+#   This file is released under the MIT license.  #
+###################################################
 
-import engine
+__author__  = "Mathtin, Plaguedo"
+__date__    = "$05.11.2015 17:43:27$"
+
+import engine as vk
 import random, json
 from urllib.request import urlopen
 from urllib.parse import urlencode
+from types import MethodType
 
-class react_cmd(engine.reaction):
-    def __init__(self, allowed_users):
-        engine.reaction.__init__(self, allowed_users)
-        
-    def get_key(self): return 'cmd'
+PREFIX = '#!'
+
+def command(cls, cmd_name, root = False):
+    def cmd_wrapper(func):
+        if root: lib = cls.rcmdlib
+        else:    lib = cls.cmdlib
+        lib[cmd_name] = func
+        if isinstance(cls, react_cmd):
+            cls.localwrap(lib, cmd_name)
+        return func
+    return cmd_wrapper
+
+class react_cmd(vk.reaction):
+
+    key = 'cmd'
     
-    def rule(self, sender, update):
-        if update['type'] == 4 and not(update['flags']['out']) and update['message'][:2] == '#!':
-            return True
-        return False
+    cmdlib = {}
+    rcmdlib = {}
 
-    def pars_func(self, sender, update):
-        sendMsg = engine.SendMessage(sender, update)
-        msg_struct = sendMsg.msg_struct
-        msg = update['message']
+    description = {
+        "about_cmd": "Command format: {prfx}command [args]\n\
+Example: {prfx}help\n\
+Choose section\n\
+Example: {prfx}help basic\n\
+Available sections: all".format(prfx=PREFIX),
+        "basic": "Basic:\n\
+{prfx}help [section] - about [section]\n\
+{prfx}version - show version\n\
+{prfx}getanswer - test command\n\
+{prfx}rand A - generate random integer modulo A\n\
+{prfx}rand A B - generate random integer between A and B (A<=B)".format(prfx=PREFIX),
+        "useful": "Useful:\n\
+{prfx}weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
+{prfx}kuantan - recieve IP-adress of kuantan\n".format(prfx=PREFIX)
+    }
+    
+    command = classmethod(command)
+        
+    def localwrap(self, lib, key):
+        func = lib[key]
+        def cmd_func(*args, **kwargs):
+            args = (self,) + args
+            return func(*args, **kwargs)
+        lib[key] = cmd_func
+        return func
+        
+    def __init__(self, allowed_users):
+        vk.reaction.__init__(self, allowed_users)
+        self.command = command.__get__(self)
+        for cmd in self.cmdlib:
+            self.localwrap(self.cmdlib, cmd)
+        for cmd in self.rcmdlib:
+            self.localwrap(self.rcmdlib, cmd)
+
+    def check_update(self, bot, update):
+        if not(self.is_allowed(bot,update)) or\
+            update['type'] != vk.NEWMESSAGE or\
+            bot.has_flag("OUTBOX", update) or\
+            update['message'][:len(PREFIX)] != PREFIX:
+            return False
+        msg = update['message'][len(PREFIX):]
         userID = update['user_id']
         chatID = update['chat_id']
         #Parsing quots
-        temp=msg.split("&quot;")
-        command=[]
+        temp = msg.split("&quot;")
+        argv = []
         for i in range(len(temp)):
             if (i + 1) % 2 == 1:
                 array = temp[i].split(" ")
                 for arg in array:
-                    if arg != "":
-                        command.append(arg)
+                    if arg: argv.append(arg)
+            elif temp[i]: 
+                argv.append(temp[i])
+        argc = len(argv)
+        bot.log("cmd \"" + str(argv[0]) + "Args" + str(argv[1:]), 2)
+        if self.call_ext(bot, argv, userID, chatID):
+            return True
+        if argv[0] in self.cmdlib:
+            self.cmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
+        elif argv[0] in self.rcmdlib:
+            if bot.is_root(userID):
+                self.rcmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
             else:
-                command.append(temp[i])
-        command_len=len(command)
-        if sender.get_log_level()  >= 2:
-            for i in range(command_len):
-                if command[i] == "": 
-                    del command[i]
-                    i -= 1
-                    command_len -= 1
-                else: sender.get_shouter()("Arg[" + str(i) + "]=\"" + command[i] + "\"")
-        #Commands with arguments
-        #WEATHER
-        if command[0] == "#!weather":
-            if command_len == 1:
-                msg_struct["message"] = currentWeather("Moscow")
-            else:
-                msg_struct["message"] = currentWeather(command[1])
-        #AHTUNG
-        elif command[0] == "#!ahtung" or command[0] == "#!aht":
-            if command_len < 3:
-                msg_struct["message"] = "Statement expected, usage: #!aht[ung] group message"
-            else:
-                user_list = []
-                if command[1] == "corrupted":
-                    user_list = [ '24799071', '185952294' ]
-                elif command[1] == "stars":
-                    user_list = [ '24799071', '185952294' ]
-                elif command[1] == "root":
-                    user_list = [ '24799071', '185952294' ]
-                else:
-                    msg_struct["message"] = "Nothing matches to " + command[1]
-                    return msg_struct
-                sender.get_shouter()("To group: " + command[1] + '\n')
-                command = command[2:]
-                if 'user_id' in msg_struct: del msg_struct['user_id']
-                elif 'chat_id' in msg_struct: del msg_struct['chat_id']
-                msg = " ".join(command)
-                sender.get_shouter()("Important message: " + msg + '\n')
-                sender.get_shouter()("To users: " + ",".join(user_list) + '\n')
-                msg_struct['user_ids'] = ",".join(user_list)
-                msg_struct["message"] = u'[АХТУНГ]\n' + msg + u'\n[/АХТУНГ]'
-        #RANDOM
-        elif command[0] == "#!rand":
-            if command_len == 1:
-                msg_struct["message"] = "Statement expected"
-            elif command_len == 2:
-                if not(command[1].isdigit()):
-                    msg_struct["message"] = "Number expected"
-                else:
-                    if sender.get_log_level() >= 1:
-                        sender.get_shouter()("request for RAND: \"" + msg + "\"")
-                    msg_struct["message"] = str(random.randint(0, int(command[1])))
-            elif command_len == 3:
-                if not(command[1].isdigit()) or not(command[2].isdigit()):
-                    msg_struct["message"] = "Numbers expected"
-                elif int(command[1]) > int(command[2]):
-                    msg_struct["message"] = "Wrong range"
-                else:
-                    if sender.get_log_level() >= 1:
-                        sender.get_shouter()("request for RAND: \"" + msg + "\"")
-                    msg_struct["message"] = random.randint(int(command[1]), int(command[2]))
-            else:
-                msg_struct["message"] = "Too much statements"
-        #Commands with no arguments
-        elif command[0] =="#!getanswer":
-            msg_struct["message"] = "Na tebe answer D:<"
-        elif command[0] == "#!killyourself":
-            msg_struct["message"] = "Noooooooooo!!!"
-        elif command[0] == "#!lukeiamyourfather":
-            msg_struct["message"] = "I love you too, Daddy <3"
-        elif command[0] == "#!kuantan":
-            msg_struct["message"] = sender.getIP()
-        elif command[0] == "#!version":
-            msg_struct["message"] = "Best Chat Bot Ever by Plaguedo and Mathtin " + engine.ver() + "\n\
-Bot Name " + sender.get_name() + "\n\
-Coded for Python 3.4.3\n\
-Special thanks to Alexey Kuhtin"
-        elif command[0] == "#!help":
-            msg_struct["message"] =  "Command format: #!command [args]\n\
-Example: #!help\n\
-Basic:\n\
-#!help - show this message\n\
-#!version - show version\n\
-#!getanswer - test command\n\
-#!rand A - generate random integer modulo A\n\
-#!rand A B - generate random integer between A and B (A<=B)\n\
-Useful:\n\
-#!weather [city] - show current weather [city], default - Moscow (by OpenWeatherMap)\n\
-#!kuantan - recieve IP-adress of kuantan"
-        elif command[0] == "#!song":
-            if sender.is_root(userID):
-                msg_struct["message"] = "Послушай это:"
-            else:
-                msg_struct["message"] = "Лови"
-            attachment = sender.attachRecommendedAudio(userID)
-            if not(attachment):
-                msg_struct["message"] = "Похоже ты скрыл от меня свои предпочтения"
-            else: 
-                msg_struct["attachment"] = attachment
+                bot.send_message("Insufficient permissions", to = chatID)
         else:
-            msg_struct["message"] = "No such command"
-        return sendMsg
+            bot.send_message("No such command", to = chatID)
+        return True
+        #Commands with arguments
+        
+@react_cmd.command("ahtung")
+@react_cmd.command("aht")
+def ahtung_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    if argc < 3:
+        bot.send_message("Statement expected, usage: {prfx}aht[ung] group \"message\"".format(prfx=PREFIX), to = chatID)
+    else:
+        user_list = []
+        if argv[1] == "corrupted":
+            user_list = vk.__team_ids__
+        elif argv[1] == "stars":
+            user_list = vk.__team_ids__
+        elif argv[1] == "root":
+            user_list = bot.get_root_list()
+        else:
+            bot.send_message("Nothing matches to " + argv[1], to = chatID)
+        if not(userID in user_list):
+            bot.send_message("You are not a member of " + argv[1], to = chatID)
+            return True
+        bot.log("Important message: " + argv[2], 1)
+        bot.log("For users: " + ",".join(str(x) for x in user_list), 1)
+        bot.log("Group: " + argv[1], 1)
+        bot.send_message("<АХТУНГ, " + argv[1] + ">\n" + argv[2] + "\n</АХТУНГ>", to = user_list)
+    return True
+    
+    
+@react_cmd.command("drop")
+def drop_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    if bot.is_root(userID):
+        bot.send_message("Throwing exception", to = chatID)
+        raise vk.ManualDrop()
+    bot.send_message("Insufficient permissions", to = chatID)
+    return True
+    
+    
+@react_cmd.command("help")
+def help_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    help = bot.get_descriptions()
+    if argc == 1:
+        msg = react_cmd.description["about_cmd"]
+        for s in help:
+            if s != "none" and s != "about_cmd":
+                msg += ", " + s 
+        bot.send_message(msg, to = chatID)
+    else:
+        if argv[1] == "all":
+            desc = ""
+            for s in help:
+                if s == "about_cmd": continue
+                if help[s][-1] != "\n": help[s] += "\n"
+                desc += help[s]
+            bot.send_message(desc, to = chatID)
+        elif argv[1] in help:
+            bot.send_message(help[argv[1]], to = chatID)
+        else: bot.send_message("No such section", to = chatID)
+    return True
+    
+    
+@react_cmd.command("killyourself")
+def killyourself_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    bot.send_message("Nooooooo!", to = chatID)
+    return True
+    
+    
+@react_cmd.command("kuantan")
+def kuantan_cmd(cmd_handler, argc, argv, bot, userID, chatID, ):
+    bot.send_message(bot.getIP(), to = chatID)
+    return True
+ 
+ 
+@react_cmd.command("getanswer")
+def getanswer_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    bot.send_message("Na tebe answer D:<", to = chatID)
+    return True
+    
+    
+@react_cmd.command("lukeiamyourfather")
+def lukeiamyourfather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    bot.send_message("I love you too, Daddy <3", to = chatID)
+    return True
+    
+    
+@react_cmd.command("rand")
+def rand_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    if argc == 1:
+        bot.send_message("Statement expected", to = chatID)
+    elif argc == 2:
+        if not(argv[1].isdigit()):
+            bot.send_message("Number expected", to = chatID)
+        else:
+            bot.log("request for RAND: \"" + msg + "\"", 1)
+            bot.send_message( random.randint(0, int(argv[1])), to = chatID)
+    else:
+        if not(argv[1].isdigit()) or not(argv[2].isdigit()):
+            bot.send_message("Numbers expected", to = chatID)
+        elif int(argv[1]) > int(argv[2]):
+            bot.send_message("Wrong range", to = chatID)
+        else:
+            bot.log("request for RAND: \"" + msg + "\"", 1)
+            bot.send_message( random.randint(int(argv[1]), int(argv[2])), to = chatID)
+    return True
+    
+    
+@react_cmd.command("song")
+def song_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    msg = ""
+    if bot.is_root(userID):
+        msg = "Послушай это:"
+    else:
+        msg = "Лови"
+    audio = bot.recommended_audio(userID)
+    if not(audio):
+        bot.send_message("Похоже ты скрыл от меня свои предпочтения", to = chatID)
+    else:
+        bot.send_message(msg, to = chatID, attachment = audio)
+    return True
+    
+    
+@react_cmd.command("version")
+def version_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    bot.send_message("Best Chat Bot Ever by Plaguedo and Mathtin " + vk.__version__ + "\n\
+Bot Name " + bot.get_name() + "\n\
+Coded for Python 3.4.3\n\
+Special thanks to Alexey Kuhtin", to = chatID)
+    return True
 
+    
+@react_cmd.command("weather")
+def weather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+    if argc == 1:
+        bot.send_message(currentWeather("Moscow"), to = chatID)
+    else:
+        bot.send_message(currentWeather(argv[1]), to = chatID)
+    return True
+
+    
 #OpenWeatherMap API
 def currentWeather(city="Moscow"):
     method = "weather?%s"

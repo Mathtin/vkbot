@@ -1,30 +1,39 @@
-#Ask
+# Ask Reaction
 # -*- coding: utf-8 -*-
-# by Mathtin and Plaguedo
+###################################################
+#........../\./\...___......|\.|..../...\.........#
+#........./..|..\/\.|.|_|._.|.\|....|.c.|.........#
+#......../....../--\|.|.|.|i|..|....\.../.........#
+#        Mathtin (c)                              #
+###################################################
+#	Author: Daniil [Mathtin] Shigapov             #
+#	Contributors: Plaguedo                        #
+#   Copyright (c) 2017 <wdaniil@mail.ru>          #
+#   This file is released under the MIT license.  #
+###################################################
 
-import engine
+__author__  = "Mathtin, Plaguedo"
+__date__    = "$05.11.2015 17:43:27$"
+
+import engine as vk
 import random
 import re
 
-class react_ask(engine.reaction):
-    def __init__(self, allowed_users):
-        engine.reaction.__init__(self, allowed_users)
-        
-    def get_key(self): return 'ask'
-    
-    def rule(self, sender, update):
-        if update['type'] != 4 or update['flags']['out']:
-            return False
-        arr_msg = list(update['message'])
-        question = arr_msg[-1] == "?"
-        appeal = sender.get_name() in update['message']
-        if question and (update['user_id'] == update['chat_id'] or appeal):
-            return True
-        else:
-            return False
+class react_ask(vk.reaction):
 
-    def pars_func(self, sender, update):
-        sendMsg = engine.SendMessage(sender, update)
+    key = 'ask'
+    
+    description = { 'ask': 'Попробуй задать мне вопрос'}
+
+    def check_update(self, bot, update):
+        if update['type'] != vk.NEWMESSAGE:
+            return False
+        question = update['message'][-1] == "?"
+        appeal = bot.get_name() in update['message']
+        if  bot.has_flag("OUTBOX", update) or\
+            not(question) or\
+            ( bot.has_flag("CONFERENCE", update) and not(appeal) ):
+            return False
         msg = update['message']
         random.seed(msg)
         if (u'Почему' in msg) or (u'почему' in msg) or (u'Why' in msg) or (u'why' in msg):
@@ -34,5 +43,5 @@ class react_ask(engine.reaction):
         else:
             msg = ["Безусловно это правда", "Такого не может быть", "Да", "Нет", "Может быть", "Не уверена", "Соглашусь с тобой", "Не могу с тобой согласиться", "Возможно", "Вряд ли", "Я промолчу"]
         g = random.randint(0, len(msg) - 1)
-        sendMsg.msg_struct["message"] = msg[g]
-        return sendMsg
+        bot.send_message(msg[g], to = update['chat_id'])
+        return True
