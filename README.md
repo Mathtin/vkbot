@@ -13,8 +13,9 @@ Add access token and create sequential list of reaction modules
 ```
 smtoken = "..."
 reactions = [
-    react_cmd( allowed_users = "all" ),
-    react_ask( allowed_users = "all" )
+    react_cmd ( allowed_users = "all" ),
+    react_ask ( allowed_users = "all" ),
+    react_sign( allowed_users = "all" )
 ]
 ```
 Finally initialise bot and start listen for updates

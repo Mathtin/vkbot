@@ -133,8 +133,8 @@ def ahtung_cmd(cmd_handler, argc, argv, bot, userID, chatID):
         bot.log("Group: " + argv[1], 1)
         bot.send_message("<АХТУНГ, " + argv[1] + ">\n" + argv[2] + "\n</АХТУНГ>", to = user_list)
     return True
-    
-    
+
+
 @react_cmd.command("drop")
 def drop_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     if bot.is_root(userID):
