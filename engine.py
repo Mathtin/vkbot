@@ -92,7 +92,8 @@ class VKBot:
         method = "messages.getLongPollServer?%s"
         onsend = {
             'use_ssl': 1,
-            'access_token': self.__access_token
+            'access_token': self.__access_token,
+            'v': 3.0,
         }
         paramsonsend = urlencode(onsend)
         if not(reconnect): self.__shout("Connecting to Longpoll server...")
@@ -100,6 +101,9 @@ class VKBot:
         answer = f.read().decode("utf-8")
         longpoll_info = json.loads(answer)
         #Updating long poll server info
+        if not('response' in longpoll_info):
+            self.log('SERVER: ' + answer, 0)
+            return False
         self.__longpoll['key'] = longpoll_info["response"]["key"]
         self.__longpoll['server'] = longpoll_info["response"]["server"]
         self.__longpoll['ts'] = longpoll_info["response"]["ts"]
@@ -236,7 +240,8 @@ class VKBot:
     def send_message(self, msg, to, attachment = None):
         msg_struct = {
             'message': msg,
-            'access_token': self.__access_token
+            'access_token': self.__access_token,
+            'v': 3.0,
         }
         if attachment:
             msg_struct["attachment"] = attachment
@@ -293,7 +298,8 @@ class VKBot:
             'offset': 2,
             'count': 50,
             'shuffle': 1,
-            'access_token': self.__access_token
+            'access_token': self.__access_token,
+            'v': 3.0,
         }
         paramsonsend = urlencode(onsend)
         self.log("Getting recommendations...", 1)
@@ -316,7 +322,8 @@ class VKBot:
         method = "status.get?%s"
         onsend = {
             'group_id': self.__vkgroup,
-            'access_token': self.__access_token
+            'access_token': self.__access_token,
+            'v': 3.0,
         }
         self.log("Getting IP of kuantan...", 1)
         paramsonsend = urlencode(onsend)
