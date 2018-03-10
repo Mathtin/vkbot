@@ -74,7 +74,7 @@ Available sections: all".format(prfx=PREFIX),
             self.localwrap(self.cmdlib, cmd)
         for cmd in self.rcmdlib:
             self.localwrap(self.rcmdlib, cmd)
-
+            
     def check_update(self, bot, update):
         if not(self.is_allowed(bot,update)) or\
             update['type'] != vk.NEWMESSAGE or\
@@ -84,6 +84,9 @@ Available sections: all".format(prfx=PREFIX),
         msg = update['message'][len(PREFIX):]
         userID = update['user_id']
         chatID = update['chat_id']
+        if msg == '':
+            bot.send_message("Empty command", to = chatID)
+            return True
         #Parsing quots
         temp = msg.split("&quot;")
         argv = []
@@ -94,15 +97,16 @@ Available sections: all".format(prfx=PREFIX),
                     if arg: argv.append(arg)
             elif temp[i]: 
                 argv.append(temp[i])
-        argc = len(argv)
         bot.log("cmd \"" + str(argv[0]) + "Args" + str(argv[1:]), 2)
         if self.call_ext(bot, argv, userID, chatID):
             return True
         if argv[0] in self.cmdlib:
-            self.cmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
+            res = self.cmdlib[ argv[0] ](argv, bot, userID, chatID)
+            if not(res): bot.send_message("Bad command", to = chatID)
         elif argv[0] in self.rcmdlib:
             if bot.is_root(userID):
-                self.rcmdlib[ argv[0] ](argc, argv, bot, userID, chatID)
+                res = self.rcmdlib[ argv[0] ](argv, bot, userID, chatID)
+                if not(res): bot.send_message("Bad command", to = chatID)
             else:
                 bot.send_message("Insufficient permissions", to = chatID)
         else:
@@ -112,8 +116,8 @@ Available sections: all".format(prfx=PREFIX),
         
 @react_cmd.command("ahtung")
 @react_cmd.command("aht")
-def ahtung_cmd(cmd_handler, argc, argv, bot, userID, chatID):
-    if argc < 3:
+def ahtung_cmd(cmd_handler, argv, bot, userID, chatID):
+    if len(argv) < 3:
         bot.send_message("Statement expected, usage: {prfx}aht[ung] group \"message\"".format(prfx=PREFIX), to = chatID)
     else:
         user_list = []
@@ -136,7 +140,7 @@ def ahtung_cmd(cmd_handler, argc, argv, bot, userID, chatID):
 
 
 @react_cmd.command("drop")
-def drop_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def drop_cmd(cmd_handler, argv, bot, userID, chatID):
     if bot.is_root(userID):
         bot.send_message("Throwing exception", to = chatID)
         raise vk.ManualDrop()
@@ -145,9 +149,9 @@ def drop_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     
     
 @react_cmd.command("help")
-def help_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def help_cmd(cmd_handler, argv, bot, userID, chatID):
     help = bot.get_descriptions()
-    if argc == 1:
+    if len(argv) == 1:
         msg = react_cmd.description["about_cmd"]
         for s in help:
             if s != "none" and s != "about_cmd":
@@ -168,34 +172,34 @@ def help_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     
     
 @react_cmd.command("killyourself")
-def killyourself_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def killyourself_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message("Nooooooo!", to = chatID)
     return True
     
     
 @react_cmd.command("kuantan")
-def kuantan_cmd(cmd_handler, argc, argv, bot, userID, chatID, ):
+def kuantan_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message(bot.getIP(), to = chatID)
     return True
  
  
 @react_cmd.command("getanswer")
-def getanswer_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def getanswer_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message("Na tebe answer D:<", to = chatID)
     return True
     
     
 @react_cmd.command("lukeiamyourfather")
-def lukeiamyourfather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def lukeiamyourfather_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message("I love you too, Daddy <3", to = chatID)
     return True
     
     
 @react_cmd.command("rand")
-def rand_cmd(cmd_handler, argc, argv, bot, userID, chatID):
-    if argc == 1:
+def rand_cmd(cmd_handler, argv, bot, userID, chatID):
+    if len(argv) == 1:
         bot.send_message("Statement expected", to = chatID)
-    elif argc == 2:
+    elif len(argv) == 2:
         if not(argv[1].isdigit()):
             bot.send_message("Number expected", to = chatID)
         else:
@@ -213,7 +217,7 @@ def rand_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     
     
 @react_cmd.command("song")
-def song_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def song_cmd(cmd_handler, argv, bot, userID, chatID):
     msg = ""
     if bot.is_root(userID):
         msg = "Послушай это:"
@@ -228,7 +232,7 @@ def song_cmd(cmd_handler, argc, argv, bot, userID, chatID):
     
     
 @react_cmd.command("version")
-def version_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def version_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message("Best Chat Bot Ever by Plaguedo and Mathtin " + vk.__version__ + "\n\
 Bot Name " + bot.get_name() + "\n\
 Coded for Python 3.4.3\n\
@@ -237,8 +241,8 @@ Special thanks to Alexey Kuhtin", to = chatID)
 
     
 @react_cmd.command("weather")
-def weather_cmd(cmd_handler, argc, argv, bot, userID, chatID):
-    if argc == 1:
+def weather_cmd(cmd_handler, argv, bot, userID, chatID):
+    if len(argv) == 1:
         bot.send_message(currentWeather("Moscow"), to = chatID)
     else:
         bot.send_message(currentWeather(argv[1]), to = chatID)

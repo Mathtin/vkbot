@@ -26,7 +26,7 @@ class react_ask(vk.reaction):
     description = { 'ask': 'Попробуй задать мне вопрос'}
 
     def check_update(self, bot, update):
-        if update['type'] != vk.NEWMESSAGE:
+        if update['type'] != vk.NEWMESSAGE or update['message'] == '':
             return False
         question = update['message'][-1] == "?"
         appeal = bot.get_name() in update['message']

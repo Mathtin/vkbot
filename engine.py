@@ -20,6 +20,7 @@ __mathtin_id__  = 24799071
 __plaguedo_id__ = 185952294
 __team_ids__    = [__mathtin_id__, __plaguedo_id__]
 __vkapi__       = "https://api.vk.com/method/"
+__vkurl__       = "https://vk.com/"
 
 #import standart modules
 from urllib.request import urlopen
@@ -99,6 +100,9 @@ class VKBot:
         if not(reconnect): self.__shout("Connecting to Longpoll server...")
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return False
         longpoll_info = json.loads(answer)
         #Updating long poll server info
         if not('response' in longpoll_info):
@@ -182,6 +186,7 @@ class VKBot:
                 'flags': update_raw[2]    #data flags
             }
             if update['type'] == 4:
+                update['message_id'] = update_raw[1]
                 update['message'] = update_raw[6]
                 chatID = update_raw[3]
                 userID = chatID
@@ -189,10 +194,12 @@ class VKBot:
                     userID = int(update_raw[7]["from"])
                 update['chat_id'] = chatID
                 update['user_id'] = userID
-                if not( self.has_flag("OUTBOX", update) ) and self.__log_level >= 2:
-                    self.__shout('Message "' + update['message'] + '" recieved from ' + str(userID))
-                if self.has_flag("OUTBOX", update) and self.__log_level >= 1:
-                    self.__shout("Message sent")
+                if 'attach1' in update_raw[7]:
+                    update['attach'] = parse_attachment(update_raw[7])
+                if not( self.has_flag("OUTBOX", update) ):
+                    self.log('Message "' + update['message'] + '" recieved from ' + str(userID), 2)
+                if self.has_flag("OUTBOX", update):
+                    self.log("Message sent", 1)
             self.last_updates.append(update)
         
     def send_last_updates(self):
@@ -226,6 +233,9 @@ class VKBot:
         self.log("Sending message...", 1)
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return "Error"
         self.log("Sending:" + answer, 2)
         time.sleep(0.334)
         if is_json(answer) and "error" in answer:
@@ -268,10 +278,13 @@ class VKBot:
     @staticmethod
     def get_user_info(id_from):
         method = "users.get?%s"
-        paramsonsend = urlencode({ 'user_ids': id_from, 'fields': "domain" })
+        paramsonsend = urlencode({ 'user_ids': id_from, 'fields': "domain,photo_50", 'v': 3.0 })
         #self.log("Getting user info...", 2)
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return "Error"
         decoded_string = json.loads(answer)
         if "error" in decoded_string:
             return decoded_string
@@ -284,6 +297,9 @@ class VKBot:
         #self.log("Getting user info...", 2)
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return "Error"
         decoded_string = json.loads(answer)
         if "error" in decoded_string:
             return decoded_string
@@ -305,6 +321,9 @@ class VKBot:
         self.log("Getting recommendations...", 1)
         f = urlopen(__vkapi__ + method % paramsonsend)
         answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return None
         self.log("recommended_audio: " + answer, 2)
         decoded_string = json.loads(answer)
         if "error" in answer:
@@ -331,6 +350,7 @@ class VKBot:
         answer = f.read().decode("utf-8")
         self.log("getIP: " + answer, 2)
         if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
             return "Error"
         decoded_string = json.loads(answer)
         if "error" in decoded_string:
@@ -338,8 +358,65 @@ class VKBot:
             return "Error"
         else:
             return decoded_string["response"]["text"]
-        
-        
+
+    def getMessageInfo(self, message_id):
+        method = "messages.getById?%s"
+        onsend = {
+            'message_ids': message_id,
+            'access_token': self.__access_token,
+            'v': 3.0,
+        }
+        self.log("Loading message info: " + str(message_id), 2)
+        paramsonsend = urlencode(onsend)
+        f = urlopen(__vkapi__ + method % paramsonsend)
+        answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return "Error"
+        decoded_string = json.loads(answer)
+        if "error" in decoded_string:
+            self.log("Server: " + decoded_string["error"]["error_msg"], 1)
+            return "Error"
+        self.log("Server: " + answer, 3)
+        if len(decoded_string["response"]) < 2:
+            return None
+        return decoded_string["response"][1]
+
+    def getAttachInfo(self, attach_id):
+        method = "docs.getById?%s"
+        onsend = {
+            'docs': attach_id,
+            'access_token': self.__access_token,
+            'v': 3.0,
+        }
+        self.log("Loading attachment info: " + str(attach_id), 2)
+        paramsonsend = urlencode(onsend)
+        f = urlopen(__vkapi__ + method % paramsonsend)
+        answer = f.read().decode("utf-8")
+        if not(is_json(answer)):
+            self.log("Server: " + answer, 1)
+            return "Error"
+        decoded_string = json.loads(answer)
+        if "error" in decoded_string:
+            self.log("Server: " + decoded_string["error"]["error_msg"], 1)
+            return "Error"
+        self.log("Server: " + answer, 3)
+        if len(decoded_string["response"]):
+            return decoded_string["response"][0]
+        return None
+
+    def downloadDocById(self, attach_id):
+        self.log("Downloading attachment by id: " + attach_id, 1)
+        f = urlopen(__vkurl__ + 'doc' + attach_id)
+        doc = f.read()
+        return doc
+
+    def downloadDoc(self, doc_o):
+        self.log("Downloading attachment: " + doc_o['title'], 1)
+        f = urlopen(doc_o['url'])
+        doc = f.read()
+        return doc
+
 class reaction:
     
     description = {'none': 'nothing'}
@@ -378,7 +455,11 @@ class reaction:
         
     def __call__(self, bot, updates):
         for update in updates:
+            self.__update = update
             self.check_update(bot, update)
+
+    def get_update(self):
+        return self.__update
         
     def check_update(self, bot, update):
         return self.check_update_ext(bot, update)
@@ -405,6 +486,9 @@ class react_ext(reaction):
     
     def connect(self, r_inst):
         self.r_inst = r_inst
+
+    def get_update(self):
+        return self.r_inst.get_update()
     
     @classmethod
     def ext_for(cls): return cls.ext_for
@@ -420,3 +504,14 @@ def is_json(myjson):
     except ValueError:
         return False
     return True
+    
+def parse_attachment(attach):
+    res = []
+    for i in range(1,10):
+        if not('attach' + str(i) in attach):
+            return res
+        res.append({
+            'type': attach['attach' + str(i) + '_type'],
+            'id': attach['attach' + str(i)]
+        })
+    return res

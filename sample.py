@@ -24,9 +24,9 @@ from react_ask   import react_ask
 from react_sign  import react_sign
 
 @react_cmd.command("send")
-def send_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def send_cmd(cmd_handler, argv, bot, userID, chatID):
     USAGE = "{0}send [reciever id] \"MESSAGE\"".format(PREFIX)
-    if argc < 3:
+    if len(argv) < 3:
         bot.send_message(USAGE, to = chatID)
     else:
         reciever = bot.get_user_info(argv[1])
@@ -43,10 +43,17 @@ def send_cmd(cmd_handler, argc, argv, bot, userID, chatID):
 react_cmd.description["useful"] += "{0}send [reciever id] \"MESSAGE\" - send anon message to reciever by bot\n".format(PREFIX)
 
 @react_cmd.command("myid")
-def myid_cmd(cmd_handler, argc, argv, bot, userID, chatID):
+def myid_cmd(cmd_handler, argv, bot, userID, chatID):
     bot.send_message("Your id: " + str(userID), to = chatID)
     return True
 react_cmd.description["useful"] += "{0}myid - return your VK id!\n".format(PREFIX)
+
+@react_cmd.command("attach")
+def myid_cmd(cmd_handler, argv, bot, userID, chatID):
+    attach = cmd_handler.get_update()['attach']
+    bot.send_message("Attachment: " + json.dumps(attach), to = chatID)
+    return True
+react_cmd.description["useful"] += "{0}attach - return attachment structure\n".format(PREFIX)
 
 def log(message):
     print(time.strftime('%H:%M:%S ') + message)
